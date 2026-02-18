@@ -377,10 +377,6 @@ img, video {
   top: -8rem;
 }
 
-.bottom-6 {
-  bottom: 1.5rem;
-}
-
 .left-4 {
   left: 1rem;
 }
@@ -389,16 +385,20 @@ img, video {
   right: .75rem;
 }
 
-.right-6 {
-  right: 1.5rem;
-}
-
 .top-0 {
   top: 0;
 }
 
 .top-1\/2 {
   top: 50%;
+}
+
+.bottom-6 {
+  bottom: 1.5rem;
+}
+
+.right-6 {
+  right: 1.5rem;
 }
 
 .z-10 {
@@ -421,6 +421,10 @@ img, video {
 
 .mb-1\.5 {
   margin-bottom: .375rem;
+}
+
+.mb-2 {
+  margin-bottom: .5rem;
 }
 
 .mb-3 {
@@ -510,10 +514,6 @@ img, video {
   height: 2.5rem;
 }
 
-.h-14 {
-  height: 3.5rem;
-}
-
 .h-16 {
   height: 4rem;
 }
@@ -530,8 +530,8 @@ img, video {
   height: .875rem;
 }
 
-.h-36 {
-  height: 9rem;
+.h-32 {
+  height: 8rem;
 }
 
 .h-4 {
@@ -546,8 +546,8 @@ img, video {
   height: 1.25rem;
 }
 
-.h-56 {
-  height: 14rem;
+.h-52 {
+  height: 13rem;
 }
 
 .h-7 {
@@ -566,6 +566,18 @@ img, video {
   height: 2.25rem;
 }
 
+.h-14 {
+  height: 3.5rem;
+}
+
+.h-36 {
+  height: 9rem;
+}
+
+.h-56 {
+  height: 14rem;
+}
+
 .h-px {
   height: 1px;
 }
@@ -580,10 +592,6 @@ img, video {
 
 .w-10 {
   width: 2.5rem;
-}
-
-.w-14 {
-  width: 3.5rem;
 }
 
 .w-20 {
@@ -624,6 +632,10 @@ img, video {
 
 .w-full {
   width: 100%;
+}
+
+.w-14 {
+  width: 3.5rem;
 }
 
 .min-w-0 {
@@ -689,6 +701,10 @@ img, video {
   align-items: center;
 }
 
+.justify-end {
+  justify-content: flex-end;
+}
+
 .justify-center {
   justify-content: center;
 }
@@ -743,6 +759,10 @@ img, video {
   word-break: break-all;
 }
 
+.rounded {
+  border-radius: .25rem;
+}
+
 .rounded-2xl {
   border-radius: 1rem;
 }
@@ -755,12 +775,12 @@ img, video {
   border-radius: 9999px;
 }
 
-.rounded-lg {
-  border-radius: .5rem;
-}
-
 .rounded-xl {
   border-radius: .75rem;
+}
+
+.rounded-lg {
+  border-radius: .5rem;
 }
 
 .border {
@@ -773,11 +793,6 @@ img, video {
 
 .border-dashed {
   border-style: dashed;
-}
-
-.border-emerald-100 {
-  --tw-border-opacity: 1;
-  border-color: rgba(209, 250, 229, var(--tw-border-opacity, 1));
 }
 
 .border-emerald-500\/20 {
@@ -801,6 +816,11 @@ img, video {
 
 .border-white\/10 {
   border-color: rgba(255, 255, 255, .1);
+}
+
+.border-emerald-100 {
+  --tw-border-opacity: 1;
+  border-color: rgba(209, 250, 229, var(--tw-border-opacity, 1));
 }
 
 .bg-emerald-400 {
@@ -1054,16 +1074,6 @@ img, video {
   color: rgba(52, 211, 153, var(--tw-text-opacity, 1));
 }
 
-.text-emerald-500 {
-  --tw-text-opacity: 1;
-  color: rgba(16, 185, 129, var(--tw-text-opacity, 1));
-}
-
-.text-emerald-700 {
-  --tw-text-opacity: 1;
-  color: rgba(4, 120, 87, var(--tw-text-opacity, 1));
-}
-
 .text-indigo-200 {
   --tw-text-opacity: 1;
   color: rgba(199, 210, 254, var(--tw-text-opacity, 1));
@@ -1123,6 +1133,11 @@ img, video {
   color: rgba(100, 116, 139, var(--tw-text-opacity, 1));
 }
 
+.text-slate-600 {
+  --tw-text-opacity: 1;
+  color: rgba(71, 85, 105, var(--tw-text-opacity, 1));
+}
+
 .text-slate-700 {
   --tw-text-opacity: 1;
   color: rgba(51, 65, 85, var(--tw-text-opacity, 1));
@@ -1148,6 +1163,16 @@ img, video {
 
 .text-white\/80 {
   color: rgba(255, 255, 255, .8);
+}
+
+.text-emerald-500 {
+  --tw-text-opacity: 1;
+  color: rgba(16, 185, 129, var(--tw-text-opacity, 1));
+}
+
+.text-emerald-700 {
+  --tw-text-opacity: 1;
+  color: rgba(4, 120, 87, var(--tw-text-opacity, 1));
 }
 
 .antialiased {
@@ -1549,24 +1574,24 @@ body {
   --tw-gradient-to: #a855f7 var(--tw-gradient-to-position);
 }
 
-.hover\:text-indigo-700:hover {
-  --tw-text-opacity: 1;
-  color: rgba(67, 56, 202, var(--tw-text-opacity, 1));
-}
-
 .hover\:text-red-400:hover {
   --tw-text-opacity: 1;
   color: rgba(248, 113, 113, var(--tw-text-opacity, 1));
 }
 
-.hover\:text-slate-500:hover {
-  --tw-text-opacity: 1;
-  color: rgba(100, 116, 139, var(--tw-text-opacity, 1));
-}
-
 .hover\:text-slate-600:hover {
   --tw-text-opacity: 1;
   color: rgba(71, 85, 105, var(--tw-text-opacity, 1));
+}
+
+.hover\:text-indigo-700:hover {
+  --tw-text-opacity: 1;
+  color: rgba(67, 56, 202, var(--tw-text-opacity, 1));
+}
+
+.hover\:text-slate-500:hover {
+  --tw-text-opacity: 1;
+  color: rgba(100, 116, 139, var(--tw-text-opacity, 1));
 }
 
 .hover\:shadow-md:hover {
