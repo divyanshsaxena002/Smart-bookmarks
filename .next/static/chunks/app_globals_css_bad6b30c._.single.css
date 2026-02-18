@@ -368,8 +368,8 @@ img, video {
   margin-right: auto;
 }
 
-.-ml-0\.5 {
-  margin-left: -.125rem;
+.mb-2 {
+  margin-bottom: .5rem;
 }
 
 .mb-3 {
@@ -380,8 +380,8 @@ img, video {
   margin-bottom: 1rem;
 }
 
-.mr-2 {
-  margin-right: .5rem;
+.ml-2 {
+  margin-left: .5rem;
 }
 
 .mt-1 {
@@ -613,25 +613,12 @@ img, video {
   border-width: 0;
 }
 
-.border-2 {
-  border-width: 2px;
-}
-
-.border-4 {
-  border-width: 4px;
-}
-
 .border-b {
   border-bottom-width: 1px;
 }
 
 .border-dashed {
   border-style: dashed;
-}
-
-.border-blue-600 {
-  --tw-border-opacity: 1;
-  border-color: rgba(37, 99, 235, var(--tw-border-opacity, 1));
 }
 
 .border-gray-200 {
@@ -644,13 +631,9 @@ img, video {
   border-color: rgba(209, 213, 219, var(--tw-border-opacity, 1));
 }
 
-.border-white {
+.border-red-200 {
   --tw-border-opacity: 1;
-  border-color: rgba(255, 255, 255, var(--tw-border-opacity, 1));
-}
-
-.border-t-transparent {
-  border-top-color: rgba(0, 0, 0, 0);
+  border-color: rgba(254, 202, 202, var(--tw-border-opacity, 1));
 }
 
 .bg-blue-100 {
@@ -807,6 +790,10 @@ img, video {
   font-weight: 500;
 }
 
+.font-normal {
+  font-weight: 400;
+}
+
 .font-semibold {
   font-weight: 600;
 }
@@ -852,6 +839,11 @@ img, video {
 .text-gray-900 {
   --tw-text-opacity: 1;
   color: rgba(17, 24, 39, var(--tw-text-opacity, 1));
+}
+
+.text-red-400 {
+  --tw-text-opacity: 1;
+  color: rgba(248, 113, 113, var(--tw-text-opacity, 1));
 }
 
 .text-red-600 {
@@ -992,22 +984,6 @@ img, video {
   --tw-ring-offset-width: 2px;
 }
 
-.focus-visible\:outline:focus-visible {
-  outline-style: solid;
-}
-
-.focus-visible\:outline-2:focus-visible {
-  outline-width: 2px;
-}
-
-.focus-visible\:outline-offset-2:focus-visible {
-  outline-offset: 2px;
-}
-
-.focus-visible\:outline-blue-600:focus-visible {
-  outline-color: #2563eb;
-}
-
 .disabled\:cursor-not-allowed:disabled {
   cursor: not-allowed;
 }
@@ -1043,10 +1019,6 @@ img, video {
   .sm\:text-sm {
     font-size: .875rem;
     line-height: 1.25rem;
-  }
-
-  .sm\:leading-6 {
-    line-height: 1.5rem;
   }
 }
 

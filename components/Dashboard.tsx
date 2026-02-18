@@ -1,125 +1,150 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
-import { Bookmark, Database } from '@/lib/types';
-import { Plus, Trash2, ExternalLink, Globe, Search, AlertCircle } from 'lucide-react';
+import { Bookmark } from '@/lib/types';
+import { Plus, Trash2, ExternalLink, Globe, Search, AlertCircle, Loader2 } from 'lucide-react';
 
 interface DashboardProps {
   session: Session;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ session }) => {
+export default function Dashboard({ session }: DashboardProps) {
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
+
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const supabase = createClient();
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Initial Fetch
-  const fetchBookmarks = useCallback(async () => {
-    try {
+  // ── Fetch bookmarks on mount ──────────────────────────────────────────────
+  useEffect(() => {
+    async function fetchBookmarks() {
       setLoading(true);
+      setFetchError(null);
+
       const { data, error } = await supabase
         .from('bookmarks')
         .select('*')
+        .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      if (data) setBookmarks(data);
-    } catch (error: any) {
-      console.error('Error fetching bookmarks:', error.message);
-    } finally {
+      if (error) {
+        console.error('Fetch error:', error);
+        setFetchError(error.message);
+      } else {
+        setBookmarks(data ?? []);
+      }
       setLoading(false);
     }
-  }, [supabase]);
 
-  useEffect(() => {
     fetchBookmarks();
+  }, [supabase, session.user.id]);
 
-    // Realtime Subscription
+  // ── Realtime subscription ─────────────────────────────────────────────────
+  useEffect(() => {
     const channel = supabase
-      .channel('realtime-bookmarks')
+      .channel('bookmarks-realtime')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'bookmarks',
+          filter: `user_id=eq.${session.user.id}`,
         },
         (payload) => {
           if (payload.eventType === 'INSERT') {
             setBookmarks((prev) => [payload.new as Bookmark, ...prev]);
           } else if (payload.eventType === 'DELETE') {
-            setBookmarks((prev) => prev.filter((b) => b.id !== payload.old.id));
+            setBookmarks((prev) => prev.filter((b) => b.id !== (payload.old as Bookmark).id));
           } else if (payload.eventType === 'UPDATE') {
             setBookmarks((prev) =>
-              prev.map((b) => (b.id === payload.new.id ? (payload.new as Bookmark) : b))
+              prev.map((b) => (b.id === (payload.new as Bookmark).id ? (payload.new as Bookmark) : b))
             );
           }
         }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [fetchBookmarks, supabase]);
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase, session.user.id]);
 
-  const handleAddBookmark = async (e: React.FormEvent) => {
+  // ── Add bookmark ──────────────────────────────────────────────────────────
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !url.trim()) return;
+    const trimmedTitle = title.trim();
+    let trimmedUrl = url.trim();
+    if (!trimmedTitle || !trimmedUrl) return;
 
-    let validUrl = url.trim();
-    if (!/^https?:\/\//i.test(validUrl)) {
-      validUrl = 'https://' + validUrl;
+    if (!/^https?:\/\//i.test(trimmedUrl)) {
+      trimmedUrl = 'https://' + trimmedUrl;
     }
 
-    try {
-      setAdding(true);
-      setError(null);
+    setAdding(true);
+    setAddError(null);
 
-      const insertData: Database['public']['Tables']['bookmarks']['Insert'] = {
-        title: title.trim(),
-        url: validUrl,
-        user_id: session.user.id,
-      };
+    const { error } = await supabase.from('bookmarks').insert({
+      title: trimmedTitle,
+      url: trimmedUrl,
+      user_id: session.user.id,
+    } as any);
 
-      // @ts-expect-error - Supabase client type inference issue in Next.js client components
-      const { error } = await supabase.from('bookmarks').insert(insertData);
-
-      if (error) throw error;
-
+    if (error) {
+      console.error('Insert error:', error);
+      setAddError(error.message);
+    } else {
       setTitle('');
       setUrl('');
-    } catch (error: any) {
-      setError(error.message);
-    } finally {
-      setAdding(false);
+      // Optimistically add to list (realtime will also fire, but this is faster)
+      setBookmarks((prev) => [
+        { id: crypto.randomUUID(), title: trimmedTitle, url: trimmedUrl, user_id: session.user.id, created_at: new Date().toISOString() },
+        ...prev,
+      ]);
     }
+
+    setAdding(false);
   };
 
+  // ── Delete bookmark ───────────────────────────────────────────────────────
   const handleDelete = async (id: string) => {
-    try {
-      const { error } = await supabase.from('bookmarks').delete().eq('id', id);
-      if (error) throw error;
-    } catch (error: any) {
-      console.error('Error deleting:', error.message);
-      alert('Failed to delete bookmark');
+    setDeletingId(id);
+    // Optimistic UI: remove immediately
+    setBookmarks((prev) => prev.filter((b) => b.id !== id));
+
+    const { error } = await supabase.from('bookmarks').delete().eq('id', id);
+
+    if (error) {
+      console.error('Delete error:', error);
+      alert(`Failed to delete: ${error.message}`);
+      // Re-fetch to restore state
+      const { data } = await supabase
+        .from('bookmarks')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false });
+      setBookmarks(data ?? []);
     }
+
+    setDeletingId(null);
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-8">
-      {/* Add Bookmark Form */}
+
+      {/* ── Add Bookmark Form ── */}
       <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-900/5">
         <div className="border-b border-gray-200 bg-gray-50 px-6 py-4">
           <h3 className="text-base font-semibold leading-6 text-gray-900">Add New Bookmark</h3>
         </div>
-        <form onSubmit={handleAddBookmark} className="p-6">
+        <form onSubmit={handleAdd} className="p-6">
           <div className="grid gap-6 md:grid-cols-2">
             <div>
               <label htmlFor="title" className="block text-sm font-medium leading-6 text-gray-900">
@@ -128,13 +153,12 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
               <div className="mt-2">
                 <input
                   type="text"
-                  name="title"
                   id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="My Cool Site"
-                  className="block w-full rounded-md border-0 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                   required
+                  className="block w-full rounded-md border-0 px-3 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm"
                 />
               </div>
             </div>
@@ -145,51 +169,58 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
               <div className="mt-2">
                 <input
                   type="text"
-                  name="url"
                   id="url"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="example.com"
-                  className="block w-full rounded-md border-0 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                   required
+                  className="block w-full rounded-md border-0 px-3 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm"
                 />
               </div>
             </div>
           </div>
 
-          {error && (
+          {addError && (
             <div className="mt-4 flex items-center gap-2 rounded-md bg-red-50 p-3 text-sm text-red-600">
-              <AlertCircle className="h-4 w-4" />
-              {error}
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              {addError}
             </div>
           )}
 
-          <div className="mt-6 flex items-center justify-end">
+          <div className="mt-6 flex justify-end">
             <button
               type="submit"
               disabled={adding}
-              className="flex items-center justify-center rounded-md bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 disabled:opacity-50 transition-colors"
             >
               {adding ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <>
-                  <Plus className="-ml-0.5 mr-2 h-4 w-4" />
-                  Add Bookmark
-                </>
+                <Plus className="h-4 w-4" />
               )}
+              {adding ? 'Adding...' : 'Add Bookmark'}
             </button>
           </div>
         </form>
       </div>
 
-      {/* Bookmarks List */}
+      {/* ── Bookmarks List ── */}
       <div>
-        <h2 className="mb-4 text-lg font-semibold leading-6 text-gray-900">Your Bookmarks</h2>
+        <h2 className="mb-4 text-lg font-semibold leading-6 text-gray-900">
+          Your Bookmarks
+          {bookmarks.length > 0 && (
+            <span className="ml-2 text-sm font-normal text-gray-500">({bookmarks.length})</span>
+          )}
+        </h2>
 
         {loading ? (
           <div className="flex h-32 items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-gray-50">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          </div>
+        ) : fetchError ? (
+          <div className="flex h-32 flex-col items-center justify-center rounded-2xl border border-dashed border-red-200 bg-red-50 text-center">
+            <AlertCircle className="mb-2 h-8 w-8 text-red-400" />
+            <p className="text-sm text-red-600">{fetchError}</p>
           </div>
         ) : bookmarks.length === 0 ? (
           <div className="flex h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white text-center">
@@ -202,16 +233,16 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
             {bookmarks.map((bookmark) => (
               <div
                 key={bookmark.id}
-                className="group relative flex flex-col justify-between rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md ring-1 ring-gray-900/5"
+                className="group relative flex flex-col justify-between rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 transition-shadow hover:shadow-md"
               >
                 <div>
-                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition-colors group-hover:bg-blue-600 group-hover:text-white">
                     <Globe className="h-6 w-6" />
                   </div>
-                  <h3 className="line-clamp-1 text-base font-semibold leading-6 text-gray-900">
+                  <h3 className="line-clamp-1 text-base font-semibold text-gray-900">
                     {bookmark.title}
                   </h3>
-                  <p className="mt-1 line-clamp-1 text-sm text-gray-500 break-all">
+                  <p className="mt-1 line-clamp-1 break-all text-sm text-gray-500">
                     {bookmark.url}
                   </p>
                 </div>
@@ -221,16 +252,21 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
                     href={bookmark.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-1 items-center justify-center gap-2 rounded-md bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-md bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
                   >
                     Visit <ExternalLink className="h-3 w-3" />
                   </a>
                   <button
                     onClick={() => handleDelete(bookmark.id)}
-                    className="flex items-center justify-center rounded-md bg-red-50 px-3 py-2 text-red-600 hover:bg-red-100 transition-colors"
+                    disabled={deletingId === bookmark.id}
+                    className="flex items-center justify-center rounded-md bg-red-50 px-3 py-2 text-red-600 hover:bg-red-100 disabled:opacity-50 transition-colors"
                     title="Delete bookmark"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {deletingId === bookmark.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -240,6 +276,4 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
       </div>
     </div>
   );
-};
-
-export default Dashboard;
+}
