@@ -1,7 +1,9 @@
+'use client';
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabaseClient';
-import { Bookmark } from '../types';
+import { createClient } from '@/lib/supabase/client';
+import { Bookmark, Database } from '@/lib/types';
 import { Plus, Trash2, ExternalLink, Globe, Search, AlertCircle } from 'lucide-react';
 
 interface DashboardProps {
@@ -15,6 +17,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const supabase = createClient();
 
   // Initial Fetch
   const fetchBookmarks = useCallback(async () => {
@@ -32,20 +35,18 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     fetchBookmarks();
 
     // Realtime Subscription
-    // Subscribe to ALL changes on the 'bookmarks' table
-    // RLS policies on the server will ensure we only receive events for our own user_id
     const channel = supabase
       .channel('realtime-bookmarks')
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to INSERT, UPDATE, DELETE
+          event: '*',
           schema: 'public',
           table: 'bookmarks',
         },
@@ -66,13 +67,12 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchBookmarks]);
+  }, [fetchBookmarks, supabase]);
 
   const handleAddBookmark = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !url.trim()) return;
 
-    // Basic URL validation
     let validUrl = url.trim();
     if (!/^https?:\/\//i.test(validUrl)) {
       validUrl = 'https://' + validUrl;
@@ -81,18 +81,18 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
     try {
       setAdding(true);
       setError(null);
-      
-      const { error } = await supabase.from('bookmarks').insert([
-        {
-          title: title.trim(),
-          url: validUrl,
-          user_id: session.user.id,
-        },
-      ]);
+
+      const insertData: Database['public']['Tables']['bookmarks']['Insert'] = {
+        title: title.trim(),
+        url: validUrl,
+        user_id: session.user.id,
+      };
+
+      // @ts-expect-error - Supabase client type inference issue in Next.js client components
+      const { error } = await supabase.from('bookmarks').insert(insertData);
 
       if (error) throw error;
 
-      // Reset form
       setTitle('');
       setUrl('');
     } catch (error: any) {
@@ -106,8 +106,6 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
     try {
       const { error } = await supabase.from('bookmarks').delete().eq('id', id);
       if (error) throw error;
-      // Optimistic update not strictly needed due to realtime, but feels snappier if we did it.
-      // We'll rely on realtime for this exercise to prove it works.
     } catch (error: any) {
       console.error('Error deleting:', error.message);
       alert('Failed to delete bookmark');
@@ -188,10 +186,10 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
       {/* Bookmarks List */}
       <div>
         <h2 className="mb-4 text-lg font-semibold leading-6 text-gray-900">Your Bookmarks</h2>
-        
+
         {loading ? (
           <div className="flex h-32 items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-gray-50">
-             <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
           </div>
         ) : bookmarks.length === 0 ? (
           <div className="flex h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white text-center">
@@ -217,7 +215,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
                     {bookmark.url}
                   </p>
                 </div>
-                
+
                 <div className="mt-6 flex items-center gap-3">
                   <a
                     href={bookmark.url}

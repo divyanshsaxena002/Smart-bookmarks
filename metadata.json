@@ -1,5 +1,0 @@
-{
-  "name": "Smart Bookmark App",
-  "description": "A secure, realtime bookmark manager using React, Supabase, and Tailwind CSS.",
-  "requestFramePermissions": []
-}

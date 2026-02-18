@@ -1,9 +1,12 @@
+'use client';
+
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { createClient } from '@/lib/supabase/client';
 import { Bookmark as BookmarkIcon, Loader2 } from 'lucide-react';
 
 const Auth: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const supabase = createClient();
 
   const handleLogin = async () => {
     try {
@@ -11,7 +14,7 @@ const Auth: React.FC = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin, // Redirects back to this page after login
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       });
       if (error) throw error;
@@ -69,7 +72,7 @@ const Auth: React.FC = () => {
             {loading ? 'Connecting...' : 'Sign in with Google'}
           </button>
         </div>
-        
+
         <div className="mt-6 text-center text-xs text-gray-400">
           <p>Only Google Authentication is supported for security.</p>
         </div>
